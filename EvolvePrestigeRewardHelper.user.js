@@ -2,15 +2,23 @@
 // @name        Evolve prestige reward helper
 // @namespace   Violentmonkey Scripts
 // @match       https://pmotschmann.github.io/Evolve/*
-// @version     1.0
+// @version     1.1
 // @author      Kelenius
 // @license     MIT; https://spdx.org/licenses/MIT.html
 // @description 25/05/2024, 14:48:01
 // ==/UserScript==
 
+/*
+ * 1.0: Initial release.
+ * 1.1: Better instruction, high pop bug fix, occupation fix
+ */
+
 // TO RETRIEVE REWARD FROM VOLCH'S AUTOMATION SCRIPT:
-// {eval: PrestigeRewardHelper.Log(settings.prestigeType)}
-// You can also type PrestigeRewardHelper.Log("mad") (or any other prestige type) to look at what you'd get right now
+// 1) Install Volch's automation script and this script
+// 2) Settings -> Logging Settings -> toggle "Prestige" on
+// 3) Add {eval: PrestigeRewardHelper.Log(settings.prestigeType)} to the Prestige Log Format somewhere, it'll be replaced by the reward in the log
+// 4) Only triggered by script prestige, won't work if you prestige manually
+// You can also type PrestigeRewardHelper.Log("mad") (or any other prestige type) into the console to look at what you'd get right now
 
 PrestigeRewardHelper = {}
 
@@ -73,7 +81,15 @@ PrestigeRewardHelper.GetPrestigeReward = function (type) {
 
   inputs.cit = evolve.global.resource[evolve.global.race.species].amount;
   inputs.sol = evolve.global.civic['garrison'] ? evolve.global.civic.garrison.workers : 0;
-  // TODO: add occupying soldiers
+  let soldPerOcc = (evolve.global.civic.govern.type === 'federation' ? 15 : 20);
+  if (evolve.global.race['high_pop']) {
+    soldPerOcc *= evolve.traits.high_pop.vars(evolve.global.race['high_pop'])[0]
+  }
+  for (let i = 0; i < 3; ++i) {
+    if (evolve.global.civic.foreign[`gov${i}`].occ){
+      inputs.sol += soldPerOcc;
+    }
+  }
   inputs.know = evolve.global.stats.know;
   inputs.mass = evolve.global.interstellar['stellar_engine'] ? evolve.global.interstellar.stellar_engine.mass : 8;
   inputs.exotic = evolve.global.interstellar['stellar_engine'] ? evolve.global.interstellar.stellar_engine.exotic : 0;
@@ -83,7 +99,7 @@ PrestigeRewardHelper.GetPrestigeReward = function (type) {
   inputs.uni = evolve.global.race.universe;
   //inputs.synth = evolve.races[evolve.global.race.species].type === 'synthetic';
   inputs.synth = false; // game bug
-  inputs.high_pop = evolve.global.race['high_pop'] ? true : false;
+  inputs.high_pop = evolve.global.race['high_pop'] ? evolve.global.race['high_pop'] : false;
   inputs.tp = (evolve.global.race['truepath'] ? true : false);
 
   inputs.extraPlasmids = 0;
@@ -132,7 +148,7 @@ PrestigeRewardHelper.calcPrestige = function (type, inputs) {
     // }
     // else {
         if (inputs.high_pop){
-            pop = Math.round(inputs.cit / traits.high_pop.vars(inputs.high_pop)[0]) + Math.round(inputs.sol / traits.high_pop.vars(inputs.high_pop)[0]);
+            pop = Math.round(inputs.cit / evolve.traits.high_pop.vars(inputs.high_pop)[0]) + Math.round(inputs.sol / evolve.traits.high_pop.vars(inputs.high_pop)[0]);
         }
         else {
             pop = inputs.cit + inputs.sol;
